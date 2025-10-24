@@ -25,7 +25,7 @@ void find(char *path, char *fileName)
     {
     case T_DEVICE:
     case T_FILE:
-    
+    {
         char *name = path;
         for (char *t = path; *t; t++)
             if (*t == '/')
@@ -33,6 +33,9 @@ void find(char *path, char *fileName)
 
         if (strcmp(name, fileName) == 0)
             printf("%s\n", path);
+        
+        break;
+    }
 
     case T_DIR:
 
