@@ -3,25 +3,6 @@
 #include "kernel/fs.h"
 #include "kernel/fcntl.h"
 
-char *
-fmtname(char *path)
-{
-    static char buf[DIRSIZ + 1];
-    char *p;
-
-    // Find first character after last slash.
-    for (p = path + strlen(path); p >= path && *p != '/'; p--)
-        ;
-    p++;
-
-    // Return blank-padded name.
-    if (strlen(p) >= DIRSIZ)
-        return p;
-    memmove(buf, p, strlen(p));
-    memset(buf + strlen(p), ' ', DIRSIZ - strlen(p));
-    return buf;
-}
-
 void find(char *path, char *fileName)
 {
     char buf[512], *p;
@@ -36,6 +17,7 @@ void find(char *path, char *fileName)
 
     if (fstat(fd, &st) < 0)
     {
+        close(fd);
         return;
     }
 
@@ -43,10 +25,12 @@ void find(char *path, char *fileName)
     {
     case T_DEVICE:
     case T_FILE:
+    
         char *name = path;
         for (char *t = path; *t; t++)
             if (*t == '/')
                 name = t + 1;
+
         if (strcmp(name, fileName) == 0)
             printf("%s\n", path);
 
@@ -55,6 +39,7 @@ void find(char *path, char *fileName)
         if (strlen(path) + 1 + DIRSIZ + 1 > sizeof buf)
         {
             printf("ls: path too long\n");
+            close(fd);
             break;
         }
 
@@ -67,6 +52,9 @@ void find(char *path, char *fileName)
             if (de.inum == 0)
                 continue;
 
+            if (strcmp(de.name, ".") == 0 || strcmp(de.name, "..") == 0)
+                continue; 
+                  
             memmove(p, de.name, DIRSIZ);
             p[DIRSIZ] = 0;
             
