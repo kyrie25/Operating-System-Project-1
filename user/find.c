@@ -3,22 +3,23 @@
 #include "kernel/fs.h"
 #include "kernel/fcntl.h"
 
-void find(char *path, char *fileName)
+int find(char *path, char *fileName)
 {
     char buf[512], *p;
     int fd;
     struct dirent de;
     struct stat st;
+    int count = 0;
 
     if ((fd = open(path, O_RDONLY)) < 0)
     {
-        return;
+        return 0;
     }
 
     if (fstat(fd, &st) < 0)
     {
         close(fd);
-        return;
+        return 0;
     }
 
     switch (st.type)
@@ -32,7 +33,10 @@ void find(char *path, char *fileName)
                 name = t + 1;
 
         if (strcmp(name, fileName) == 0)
+        {
             printf("%s\n", path);
+            count++;
+        }
         
         break;
     }
@@ -61,11 +65,12 @@ void find(char *path, char *fileName)
             memmove(p, de.name, DIRSIZ);
             p[DIRSIZ] = 0;
             
-            find(buf, fileName);
+            count += find(buf, fileName);
         }
         break;
     }
     close(fd);
+    return count;
 }
 
 int
@@ -76,6 +81,13 @@ main(int argc, char *argv[])
         fprintf(2, "Usage: find <path> <filename>\n");
         exit(1);
     }
-    find(argv[1], argv[2]);
+    
+    int count = find(argv[1], argv[2]);
+    
+    if (count == 0)
+    {
+        printf("No files found matching '%s'\n", argv[2]);
+    }
+    
     exit(0);
 }
