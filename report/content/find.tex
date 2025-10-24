@@ -1,0 +1,23 @@
+\subsubsection{Mô tả bài toán}
+Chương trình find đượct thiết kế để tìm kiếm tất cả các tệp trong cây thư mục có tên trùng với tên cho trước. Chương trình nhận vào hai tham số: đường dẫn bắt đầu tìm kiếm và tên file cần tìm.
+
+\subsubsection{Phương pháp thực hiện}
+Dựa trên cấu trúc của chương trình \texttt{ls.c} của hệ điều hành xv6 để xây dựng hàm \texttt{find()} có khả năng duyệt thư mục một cách đệ quy. 
+Chương trình được triển khai theo các bước chính sau:
+
+\begin{enumerate}
+    \item \textbf{Mở đường dẫn}: sử dụng system call \texttt{open()} để truy cập đối tượng cần kiểm tra (có thể là file hoặc thư mục).
+    
+    \item \textbf{Lấy thông tin đối tượng}: dùng \texttt{fstat()} để xác định loại của đối tượng. 
+    \begin{itemize}
+        \item Nếu là \textbf{file}, tách phần tên cuối cùng trong đường dẫn và so sánh với tên cần tìm bằng \texttt{strcmp()}. Nếu trùng, in ra đường dẫn.
+        \item Nếu là \textbf{thư mục}, đọc từng entry trong thư mục bằng \texttt{read()} để xử lý các file hoặc thư mục con.
+    \end{itemize}
+
+    \item \textbf{Bỏ qua các entry đặc biệt}: loại bỏ hai entry ``.'' và ``..'' để tránh việc duyệt lặp vô hạn.
+
+    \item \textbf{Tạo đường dẫn con}: nối tên thư mục hiện tại với tên entry con để tạo đường dẫn đầy đủ, sau đó gọi lại chính hàm \texttt{find()} nhằm tiếp tục duyệt vào cấp con.
+
+    \item \textbf{Kết thúc}: quá trình duyệt dừng lại khi tất cả các thư mục và file trong cây thư mục đã được xử lý.
+\end{enumerate}
+
