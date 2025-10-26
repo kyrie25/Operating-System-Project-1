@@ -35,7 +35,7 @@ jobs:
             - name: Generate Diff
               id: generate_diff
               run: |
-                  git diff upstream..main > diff.patch || echo "No changes detected"
+                  git diff origin/upstream..origin/main > diff.patch || echo "No changes detected"
 
             - name: Release PDF
               uses: softprops/action-gh-release@v2
