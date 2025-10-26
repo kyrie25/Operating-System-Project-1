@@ -1,0 +1,47 @@
+name: Build LaTeX
+
+on:
+    push:
+        branches:
+            - report
+        paths:
+            - "report/**"
+    workflow_dispatch:
+
+jobs:
+    build_latex:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+
+        steps:
+            - name: Set up Git repository
+              uses: actions/checkout@v4
+
+            - name: Compile LaTeX document
+              uses: xu-cheng/latex-action@v3
+              with:
+                  root_file: main.tex
+                  latexmk_shell_escape: true
+                  working_directory: ./report
+
+            - name: Move PDF to root
+              run: mv ./report/main.pdf ./Report.pdf
+
+            - name: Set outputs
+              id: vars
+              run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+            - name: Generate Diff
+              id: generate_diff
+              run: |
+                  git diff upstream..main > diff.patch || echo "No changes detected"
+
+            - name: Release PDF
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: |
+                      ./Report.pdf
+                      ./diff.patch
+                  tag_name: ${{ steps.vars.outputs.sha_short }}
+                  name: Report PDF - ${{ steps.vars.outputs.sha_short }}

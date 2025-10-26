@@ -1,0 +1,32 @@
+\subsubsection{Mô tả bài toán}
+Chương trình \texttt{xargs} được thiết kế để xây dựng và thực thi các lệnh từ đầu vào tiêu chuẩn. Chương trình nhận vào một lệnh và các đối số ban đầu từ command line, sau đó đọc thêm các đối số từ stdin (thường được pipe từ các lệnh khác) và thực thi lệnh với tất cả các đối số đã thu thập được. Điều này cho phép xử lý hàng loạt các đối số một cách hiệu quả, đặc biệt hữu ích khi kết hợp với các lệnh như \texttt{find}.
+
+\subsubsection{Phương pháp thực hiện}
+Chương trình được thiết kế với cấu trúc đơn giản, thực thi từng lệnh một cách tuần tự (tương đương với tùy chọn \texttt{-n 1} trong UNIX \texttt{xargs}).
+
+Chương trình được triển khai theo các bước chính sau:
+
+\begin{enumerate}
+    \item \textbf{Kiểm tra đối số đầu vào}: Chương trình yêu cầu ít nhất một đối số (tên lệnh cần thực thi). Nếu không có đối số nào, in ra thông báo lỗi sử dụng.
+
+    \item \textbf{Sao chép đối số từ command line}: Sao chép tất cả các đối số từ \texttt{argv[1]} đến \texttt{argv[argc-1]} vào mảng \texttt{args}, bỏ qua \texttt{argv[0]} (tên chương trình).
+
+    \item \textbf{Đọc dữ liệu từ stdin}: Sử dụng hàm \texttt{readline()} để đọc từng dòng từ đầu vào tiêu chuẩn. Hàm này đọc từng ký tự một cho đến khi gặp \texttt{newline} hoặc \texttt{EOF}.
+
+    \item \textbf{Phân tách đối số từ dòng đầu vào}:
+    \begin{itemize}
+        \item Bỏ qua khoảng trắng và tab ở đầu dòng
+        \item Tách các từ được phân cách bởi khoảng trắng hoặc tab
+        \item Thêm từng đối số vào mảng \texttt{args} sau các đối số từ command line
+        \item Thay thế ký tự phân cách bằng null terminator để tạo các chuỗi độc lập. VD: ``hello too'' sẽ được tách thành hai chuỗi độc lập: ``hello'', và ``too''.
+    \end{itemize}
+
+    \item \textbf{Thực thi lệnh}:
+    \begin{itemize}
+        \item Sử dụng \texttt{fork()} để tạo process con
+        \item Trong process con: gọi \texttt{exec()} để thực thi lệnh với các đối số đã chuẩn bị
+        \item Trong process cha: gọi \texttt{wait()} để đợi process con hoàn thành
+    \end{itemize}
+
+    \item \textbf{Lặp lại quá trình}: Tiếp tục đọc dòng tiếp theo từ stdin và lặp lại quá trình cho đến khi hết dữ liệu đầu vào.
+\end{enumerate}
