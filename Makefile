@@ -195,6 +195,7 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_sleeptest\
+	$U/_xargs\
 	$U/_pingpong\
 	$U/_find\
 	$U/_primes\
