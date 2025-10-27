@@ -1,32 +1,51 @@
 \subsubsection{Mô tả bài toán}
-Chương trình \texttt{xargs} được thiết kế để xây dựng và thực thi các lệnh từ đầu vào tiêu chuẩn. Chương trình nhận vào một lệnh và các đối số ban đầu từ command line, sau đó đọc thêm các đối số từ stdin (thường được pipe từ các lệnh khác) và thực thi lệnh với tất cả các đối số đã thu thập được. Điều này cho phép xử lý hàng loạt các đối số một cách hiệu quả, đặc biệt hữu ích khi kết hợp với các lệnh như \texttt{find}.
+Chương trình \texttt{xargs} được thiết kế để xây dựng và thực thi các lệnh từ đầu vào tiêu chuẩn.
+Chương trình nhận vào một lệnh và các đối số ban đầu từ command line, sau đó đọc thêm các đối số từ stdin (thường được pipe từ các lệnh khác) và thực thi lệnh với tất cả các đối số đã thu thập được.
+Điều này cho phép xử lý hàng loạt các đối số một cách hiệu quả, đặc biệt hữu ích khi kết hợp với các lệnh như \texttt{find}.
 
 \subsubsection{Phương pháp thực hiện}
-Chương trình được thiết kế với cấu trúc đơn giản, thực thi từng lệnh một cách tuần tự (tương đương với tùy chọn \texttt{-n 1} trong UNIX \texttt{xargs}).
+Chương trình được xây dựng gồm hai phần chính: hàm \texttt{readline()} đảm nhiệm việc đọc dữ liệu từ stdin theo từng dòng, và hàm \texttt{main()} chịu trách nhiệm nhận tham số đầu vào, phân tách đối số và thực thi lệnh.
 
-Chương trình được triển khai theo các bước chính sau:
+\paragraph{Hàm \texttt{int readline(char *buf, int maxlen)}}
+Thực hiện việc đọc một dòng dữ liệu từ stdin và lưu vào buffer.
+\begin{itemize}
+    \item Hàm sử dụng system call \texttt{read()} để đọc từng ký tự một từ \texttt{stdin}.
+    \item Quá trình đọc tiếp tục cho đến khi gặp ký tự xuống dòng (\texttt{\textbackslash n}) hoặc đạt đến giới hạn buffer (\texttt{maxlen - 1}).
+    \item Nếu gặp EOF (end of file) khi đọc:
+    \begin{itemize}
+        \item Nếu đã đọc được ít nhất một ký tự, hàm kết thúc chuỗi bằng null terminator và trả về số ký tự đã đọc.
+        \item Nếu chưa đọc được ký tự nào, hàm trả về 0 để báo hiệu hết dữ liệu.
+    \end{itemize}
+    \item Khi gặp ký tự xuống dòng, hàm thay thế bằng null terminator và trả về số ký tự đã đọc (không bao gồm \texttt{\textbackslash n}).
+    \item Cuối cùng, hàm đảm bảo chuỗi luôn được kết thúc bằng null terminator trước khi trả về số lượng ký tự.
+\end{itemize}
 
-\begin{enumerate}
-    \item \textbf{Kiểm tra đối số đầu vào}: Chương trình yêu cầu ít nhất một đối số (tên lệnh cần thực thi). Nếu không có đối số nào, in ra thông báo lỗi sử dụng.
+\paragraph{Hàm \texttt{int main(int argc, char *argv[])}}
+Chịu trách nhiệm kiểm tra tham số đầu vào, xử lý các đối số từ stdin và thực thi lệnh với các đối số đã thu thập.
 
-    \item \textbf{Sao chép đối số từ command line}: Sao chép tất cả các đối số từ \texttt{argv[1]} đến \texttt{argv[argc-1]} vào mảng \texttt{args}, bỏ qua \texttt{argv[0]} (tên chương trình).
+\begin{itemize}
+    \item \textbf{Kiểm tra tham số}: Chương trình yêu cầu ít nhất một tham số (tên lệnh cần thực thi). Nếu số lượng đối số nhỏ hơn 2 (tức là thiếu tên lệnh), chương trình sẽ in thông báo hướng dẫn sử dụng qua \texttt{fprintf()} và kết thúc bằng \texttt{exit(1)}.
 
-    \item \textbf{Đọc dữ liệu từ stdin}: Sử dụng hàm \texttt{readline()} để đọc từng dòng từ đầu vào tiêu chuẩn. Hàm này đọc từng ký tự một cho đến khi gặp \texttt{newline} hoặc \texttt{EOF}.
+    \item \textbf{Sao chép đối số từ command line}: Chương trình sao chép tất cả các đối số từ \texttt{argv[1]} đến \texttt{argv[argc-1]} vào mảng \texttt{args[]}. Các đối số này sẽ là phần cố định của lệnh cần thực thi.
+
+    \item \textbf{Đọc và xử lý từng dòng stdin}: Sử dụng vòng lặp \texttt{while} để gọi hàm \texttt{readline()}, đọc từng dòng dữ liệu từ stdin cho đến khi hết dữ liệu (EOF).
 
     \item \textbf{Phân tách đối số từ dòng đầu vào}:
     \begin{itemize}
-        \item Bỏ qua khoảng trắng và tab ở đầu dòng
-        \item Tách các từ được phân cách bởi khoảng trắng hoặc tab
-        \item Thêm từng đối số vào mảng \texttt{args} sau các đối số từ command line
-        \item Thay thế ký tự phân cách bằng null terminator để tạo các chuỗi độc lập.\\VD: ``hello too'' sẽ được tách thành hai chuỗi độc lập: ``hello'', và ``too''.
+        \item Sử dụng con trỏ \texttt{p} để duyệt qua chuỗi \texttt{line}, bỏ qua các ký tự khoảng trắng và tab ở đầu.
+        \item Với mỗi từ được tìm thấy, lưu địa chỉ của từ đó vào mảng \texttt{args[]} tại vị trí \texttt{j} (bắt đầu từ \texttt{argc - 1}).
+        \item Di chuyển con trỏ \texttt{p} qua các ký tự của từ cho đến khi gặp khoảng trắng, tab hoặc null terminator.
+        \item Thay thế ký tự phân cách (khoảng trắng hoặc tab) bằng null terminator để tạo các chuỗi độc lập, sau đó bỏ qua các ký tự phân cách tiếp theo.
+        \item Quá trình lặp lại cho đến khi hết dòng hoặc đạt giới hạn số đối số (\texttt{MAXARG - 1}).
     \end{itemize}
 
     \item \textbf{Thực thi lệnh}:
     \begin{itemize}
-        \item Sử dụng \texttt{fork()} để tạo process con
-        \item Trong process con: gọi \texttt{exec()} để thực thi lệnh với các đối số đã chuẩn bị
-        \item Trong process cha: gọi \texttt{wait()} để đợi process con hoàn thành
+        \item Đánh dấu kết thúc mảng đối số bằng cách gán \texttt{args[j] = 0}.
+        \item Gọi \texttt{fork()} để tạo process con. Nếu \texttt{fork()} thất bại, in thông báo lỗi và thoát với mã lỗi 1.
+        \item Trong process con (\texttt{pid == 0}): gọi \texttt{exec()} với \texttt{args[0]} là tên lệnh và \texttt{args} là danh sách đối số. Nếu \texttt{exec()} thất bại, in thông báo lỗi và kết thúc process con.
+        \item Trong process cha (\texttt{pid > 0}): gọi \texttt{wait(0)} để đợi process con hoàn thành trước khi tiếp tục đọc dòng tiếp theo.
     \end{itemize}
 
-    \item \textbf{Lặp lại quá trình}: Tiếp tục đọc dòng tiếp theo từ stdin và lặp lại quá trình cho đến khi hết dữ liệu đầu vào.
-\end{enumerate}
+    \item Sau khi xử lý hết tất cả các dòng từ stdin, chương trình kết thúc bằng \texttt{exit(0)}.
+\end{itemize}
