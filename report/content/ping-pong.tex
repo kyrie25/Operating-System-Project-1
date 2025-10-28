@@ -1,0 +1,34 @@
+\subsubsection{Mô tả bài toán}
+Chương trình \texttt{pingpong} được thiết kế để minh họa cơ chế giao tiếp liên tiến trình (IPC) thông qua pipes trong hệ điều hành xv6. 
+Chương trình tạo ra hai tiến trình (cha và con) trao đổi một byte dữ liệu qua hai pipes riêng biệt theo cơ chế ``ping-pong'': tiến trình cha gửi byte đến con, con nhận và in thông báo ``received ping'', sau đó gửi byte ngược lại cho cha, và cha in thông báo ``received pong''.
+
+\subsubsection{Phương pháp thực hiện}
+Chương trình được tổ chức thành ba hàm chính: \texttt{child\_process()} xử lý logic của tiến trình con, \texttt{parent\_process()} xử lý logic của tiến trình cha, và \texttt{main()} đảm nhiệm việc khởi tạo pipes và phân chia tiến trình.
+
+\paragraph{Hàm \texttt{int main(int argc, char *argv[])}}
+Chịu trách nhiệm thiết lập môi trường giao tiếp giữa hai tiến trình.
+\begin{itemize}
+    \item Khởi tạo hai pipes: \texttt{p\_to\_c[]} (parent $\rightarrow$ child) và \texttt{c\_to\_p[]} (child $\rightarrow$ parent) bằng system call \texttt{pipe()}. Mỗi pipe có hai đầu: \texttt{[0]} là read end và \texttt{[1]} là write end.
+    \item Sử dụng \texttt{fork()} để tạo tiến trình con. Sau khi fork, cả hai tiến trình đều có bản sao của các file descriptors.
+    \item Dựa vào giá trị trả về của \texttt{fork()} (0 cho con, PID dương cho cha), chương trình gọi đến hàm xử lý tương ứng.
+\end{itemize}
+
+\paragraph{Hàm \texttt{void child\_process(int *p\_to\_c, int *c\_to\_p)}}
+Thực hiện vai trò của tiến trình con trong quá trình trao đổi dữ liệu.
+\begin{itemize}
+    \item \textbf{Đóng các pipe ends không sử dụng}: Con chỉ cần đọc từ \texttt{p\_to\_c[]} và ghi vào \texttt{c\_to\_p[]}, nên đóng \texttt{p\_to\_c[1]} và \texttt{c\_to\_p[0]}. Việc này quan trọng để tránh deadlock và đảm bảo pipe có thể báo hiệu EOF đúng cách.
+    \item \textbf{Đọc byte từ cha}: Sử dụng \texttt{read()} để đọc 1 byte từ \texttt{p\_to\_c[0]}. Đây là blocking call -- tiến trình sẽ đợi cho đến khi có dữ liệu.
+    \item \textbf{In thông báo}: Sau khi nhận được byte, in ra ``\texttt{<pid>: received ping}'' với PID lấy từ \texttt{getpid()}.
+    \item \textbf{Gửi byte ngược lại}: Ghi byte vừa nhận được vào \texttt{c\_to\_p[1]} để trả về cho cha.
+    \item Đóng tất cả file descriptors còn lại và kết thúc bằng \texttt{exit(0)}.
+\end{itemize}
+
+\paragraph{Hàm \texttt{void parent\_process(int *p\_to\_c, int *c\_to\_p)}}
+Thực hiện vai trò của tiến trình cha trong quá trình trao đổi dữ liệu.
+\begin{itemize}
+    \item \textbf{Đóng các pipe ends không sử dụng}: Cha chỉ cần ghi vào \texttt{p\_to\_c[]} và đọc từ \texttt{c\_to\_p[]}, nên đóng \texttt{p\_to\_c[0]} và \texttt{c\_to\_p[1]}.
+    \item \textbf{Gửi byte đến con}: Khởi tạo buffer với ký tự 'X' và ghi vào \texttt{p\_to\_c[1]} bằng \texttt{write()}.
+    \item \textbf{Đọc byte từ con}: Sử dụng \texttt{read()} để đọc 1 byte từ \texttt{c\_to\_p[0]}. Tiến trình cha sẽ block tại đây cho đến khi con gửi dữ liệu ngược lại.
+    \item \textbf{In thông báo}: Sau khi nhận được byte, in ra ``\texttt{<pid>: received pong}''.
+    \item Đóng file descriptors, sau đó gọi \texttt{wait(0)} để đợi tiến trình con kết thúc (tránh zombie process).
+\end{itemize}
