@@ -6,7 +6,6 @@ Chương trình minh họa cơ chế giao tiếp và tạo pipeline tiến trìn
 \subsubsection{Phương pháp thực hiện}
 Chương trình mô phỏng sàng Eratosthenes bằng pipeline tiến trình: tiến trình gốc phát dãy 2→280 vào một pipe. Mỗi “nút” (một tiến trình) đọc số đầu tiên làm prime, in ra, rồi lọc bỏ các bội số và truyền phần còn lại sang pipe kế tiếp, đồng thời fork sớm để nút sau chạy song song. 
 Mấu chốt là đóng chính xác các mô tả tệp (FD) để EOF lan truyền và tránh rò rỉ tài nguyên; tiến trình gốc \texttt{wait()} đến khi toàn bộ chuỗi con cháu kết thúc. 
-Dữ liệu được truyền dưới dạng \texttt{int 32-bit} để tránh chi phí định dạng và đảm bảo hiệu năng I/O ổn định.
 
 \paragraph {Hàm \lstinline|__attribute__((noreturn)) void exec_pipe(int fd)|}
 Hàm này thực hiện vai trò của một “nút” trong chuỗi pipeline. Mỗi nút tương ứng với một số nguyên tố và chịu trách nhiệm đọc dữ liệu từ pipe đầu vào, xác định prime, rồi tạo pipe kế tiếp để chuyển tiếp các giá trị không chia hết cho prime đó.
