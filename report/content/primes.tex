@@ -1,0 +1,35 @@
+\subsubsection {Mô tả bài toán}
+Chương trình \texttt{Primes} là một chương trình minh họa sàng nguyên tố đồng thời (concurrent prime sieve) bằng cách sử dụng \texttt{pipe} và \texttt{fork} trong hệ điều hành xv6, dựa trên ý tưởng của Doug McIlroy. 
+Chương trình tạo một chuỗi tiến trình liên kết bằng \texttt{pipe}. Mỗi tiến trình đọc dữ liệu, in ra số nguyên tố đầu tiên rồi lọc bỏ các bội số của nó, truyền phần còn lại cho tiến trình kế tiếp. 
+Chương trình minh họa cơ chế giao tiếp và tạo pipeline tiến trình trong hệ điều hành xv6.
+
+\subsubsection{Phương pháp thực hiện}
+Chương trình mô phỏng sàng Eratosthenes bằng pipeline tiến trình: tiến trình gốc phát dãy 2→280 vào một pipe. Mỗi “nút” (một tiến trình) đọc số đầu tiên làm prime, in ra, rồi lọc bỏ các bội số và truyền phần còn lại sang pipe kế tiếp, đồng thời fork sớm để nút sau chạy song song. 
+Mấu chốt là đóng chính xác các mô tả tệp (FD) để EOF lan truyền và tránh rò rỉ tài nguyên; tiến trình gốc \texttt{wait()} đến khi toàn bộ chuỗi con cháu kết thúc. 
+Dữ liệu được truyền dưới dạng \texttt{int 32-bit} để tránh chi phí định dạng và đảm bảo hiệu năng I/O ổn định.
+
+\paragraph {Hàm \lstinline|__attribute__((noreturn)) void exec_pipe(int fd)|}
+Hàm này thực hiện vai trò của một “nút” trong chuỗi pipeline. Mỗi nút tương ứng với một số nguyên tố và chịu trách nhiệm đọc dữ liệu từ pipe đầu vào, xác định prime, rồi tạo pipe kế tiếp để chuyển tiếp các giá trị không chia hết cho prime đó.
+
+\begin{itemize}
+    \item Đầu tiên, hàm đọc một số nguyên từ đầu vào \texttt{fd}. Nếu kết quả trả về khác \texttt{sizeof(int)} tức là không còn dữ liệu (EOF), tiến trình đóng \texttt{fd} và kết thúc bằng \texttt{exit(0)}.
+    \item Nếu đọc thành công, giá trị đầu tiên được xem là \textit{prime} và được in ra màn hình bằng \texttt{printf("prime \%d\\n", prime)}.
+    \item Tiếp theo, tiến trình tạo một pipe mới \texttt{p[2]} và gọi \texttt{fork()} để tạo tiến trình con.
+    \begin{itemize}
+        \item Trong tiến trình con: đóng đầu ghi \texttt{p[1]}, đóng \texttt{fd} cũ, và đệ quy gọi lại \texttt{exec\_pipe(p[0])}. Nhờ đó, pipeline được mở rộng thêm một “nút” mới.
+        \item Trong tiến trình cha: đóng đầu đọc \texttt{p[0]} và bắt đầu đọc các giá trị từ \texttt{fd}. Với mỗi giá trị đọc được, nếu không chia hết cho \texttt{prime}, giá trị đó được ghi vào đầu ghi \texttt{p[1]}. Sau khi hoàn tất, cha đóng cả hai đầu pipe, \texttt{wait(0)} để đợi tiến trình con kết thúc rồi thoát bằng \texttt{exit(0)}.
+    \end{itemize}
+    \item Cơ chế này đảm bảo mỗi prime chỉ được xử lý một lần, và các tiến trình hoạt động đồng thời theo cấu trúc pipeline.
+\end{itemize}
+
+\paragraph{Hàm \texttt{int main(int argc, char *argv[])}}
+Hàm \texttt{main()} chịu trách nhiệm khởi tạo pipeline đầu tiên và cung cấp dữ liệu đầu vào cho hệ thống sàng.
+
+\begin{itemize}
+    \item Ban đầu, chương trình tạo một pipe bằng \texttt{pipe(p)}. Nếu thất bại, chương trình kết thúc bằng \texttt{exit(1)}.
+    \item Sau đó gọi \texttt{fork()} để tạo tiến trình con đầu tiên.
+    \begin{itemize}
+        \item Trong tiến trình cha: đóng đầu đọc \texttt{p[0]} và ghi các số từ 2 đến 280 vào đầu ghi \texttt{p[1]}. Khi ghi xong, cha đóng \texttt{p[1]} để gửi tín hiệu EOF cho tiến trình con, rồi \texttt{wait(0)} để đợi toàn bộ pipeline kết thúc.
+        \item Trong tiến trình con: đóng đầu ghi \texttt{p[1]} và gọi \texttt{exec\_pipe(p[0])}. Vì hàm này có thuộc tính \texttt{noreturn}, tiến trình con sẽ không quay lại mà tự xử lý toàn bộ pipeline cho đến khi kết thúc.
+    \end{itemize}
+\end{itemize}
